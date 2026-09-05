@@ -21,7 +21,7 @@ function normalizeWord(value: string): string {
 
 export async function loadWordCategories(): Promise<Record<WordCategory, WordEntry[]>> {
   const entries = await Promise.all(Object.entries(files).map(async ([category, file]) => {
-    const response = await fetch(`/data/${file}`)
+    const response = await fetch(`${import.meta.env.BASE_URL}data/${file}`)
     if (!response.ok) throw new Error(`Unable to load ${file}`)
 
     const parsed = load(await response.text())
