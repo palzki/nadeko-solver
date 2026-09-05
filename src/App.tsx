@@ -4,6 +4,7 @@ import { letterFrequency, solve } from './solver'
 import { loadWordCategories, type WordCategory, type WordEntry } from './wordLoader'
 
 const categoryLabels = {
+  general: 'general',
   movies: 'movies',
   countries: 'countries',
   anime: 'anime',
@@ -25,9 +26,9 @@ const examples = [
 function App() {
   const [pattern, setPattern] = useState('')
   const [wrong, setWrong] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<Category>('things')
+  const [selectedCategory, setSelectedCategory] = useState<Category>('general')
   const [copied, setCopied] = useState('')
-  const [wordCategories, setWordCategories] = useState<Record<Category, WordEntry[]>>({ movies: [], countries: [], anime: [], things: [], animals: [] })
+  const [wordCategories, setWordCategories] = useState<Record<Category, WordEntry[]>>({ general: [], movies: [], countries: [], anime: [], things: [], animals: [] })
   const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
@@ -38,6 +39,10 @@ function App() {
 
   const activeWords = useMemo(
     () => wordCategories[selectedCategory].map((entry) => entry.word),
+    [selectedCategory, wordCategories],
+  )
+  const displayWords = useMemo(
+    () => new Map(wordCategories[selectedCategory].map((entry) => [entry.word, entry.displayWord])),
     [selectedCategory, wordCategories],
   )
 
@@ -75,7 +80,7 @@ function App() {
   function reset() {
     setPattern('')
     setWrong('')
-    setSelectedCategory('things')
+    setSelectedCategory('general')
     setCopied('')
   }
 
@@ -111,7 +116,7 @@ function App() {
         </div>
       </section>
 
-      <section className="candidates-section"><div className="section-heading"><div><span className="step-label">03 / shortlist</span><h2>Words still in play</h2></div><span className="corpus-note">showing {Math.min(candidates.length, 48)} of {candidates.length} matches</span></div><div className="candidate-grid">{loadError ? <div className="empty-candidates"><X size={17} /> {loadError}</div> : candidates.slice(0, 48).map((candidate, index) => <button className="candidate-card" key={candidate.word} onClick={() => copySuggestion(candidate.word)} title={`Copy ${candidate.word}`}><span className="candidate-index">{copied === candidate.word ? 'copied' : String(index + 1).padStart(2, '0')}</span><strong>{candidate.word}</strong><span>{candidate.nextLetters.length ? `${candidate.nextLetters.slice(0, 4).join(' · ')} likely next` : 'all letters known'}</span></button>)}{!loadError && !candidates.length && <div className="empty-candidates"><X size={17} /> {activeWords.length ? 'No words match this board state.' : 'Loading word list...'}</div>}</div></section>
+      <section className="candidates-section"><div className="section-heading"><div><span className="step-label">03 / shortlist</span><h2>Words still in play</h2></div><span className="corpus-note">showing {Math.min(candidates.length, 48)} of {candidates.length} matches</span></div><div className="candidate-grid">{loadError ? <div className="empty-candidates"><X size={17} /> {loadError}</div> : candidates.slice(0, 48).map((candidate, index) => { const displayWord = displayWords.get(candidate.word) ?? candidate.word; return <button className="candidate-card" key={candidate.word} onClick={() => copySuggestion(displayWord)} title={`Copy ${displayWord}`}><span className="candidate-index">{copied === displayWord ? 'copied' : String(index + 1).padStart(2, '0')}</span><strong>{displayWord}</strong><span>{candidate.nextLetters.length ? `${candidate.nextLetters.slice(0, 4).join(' · ')} likely next` : 'all letters known'}</span></button> })}{!loadError && !candidates.length && <div className="empty-candidates"><X size={17} /> {activeWords.length ? 'No words match this board state.' : 'Loading word list...'}</div>}</div></section>
       <footer>Built for quick guesses in the middle of a Discord round <span>·</span> no messages leave your browser</footer>
     </main>
   )

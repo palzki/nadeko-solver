@@ -2,12 +2,13 @@ import { load } from 'js-yaml'
 
 export type WordEntry = {
   word: string
+  displayWord: string
   imageUrl?: string
 }
 
-export type WordCategory = 'movies' | 'countries' | 'anime' | 'things' | 'animals'
+export type WordCategory = 'general' | 'movies' | 'countries' | 'anime' | 'things' | 'animals'
 
-const files: Record<WordCategory, string> = {
+const files: Record<Exclude<WordCategory, 'general'>, string> = {
   movies: 'movies.yml',
   countries: 'countries.yml',
   anime: 'anime.yml',
@@ -31,6 +32,7 @@ export async function loadWordCategories(): Promise<Record<WordCategory, WordEnt
       .filter((entry): entry is { word: unknown; imageUrl?: unknown } => typeof entry === 'object' && entry !== null && 'word' in entry)
       .map((entry) => ({
         word: normalizeWord(String(entry.word)),
+        displayWord: String(entry.word).trim(),
         imageUrl: typeof entry.imageUrl === 'string' ? entry.imageUrl : undefined,
       }))
       .filter((entry) => entry.word.length > 0)
@@ -38,5 +40,8 @@ export async function loadWordCategories(): Promise<Record<WordCategory, WordEnt
     return [category as WordCategory, words] as const
   }))
 
-  return Object.fromEntries(entries) as Record<WordCategory, WordEntry[]>
+  const categories = Object.fromEntries(entries) as Record<Exclude<WordCategory, 'general'>, WordEntry[]>
+  const general = [...new Map(Object.values(categories).flat().map((entry) => [entry.word, entry])).values()]
+
+  return { general, ...categories }
 }

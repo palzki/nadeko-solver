@@ -13,7 +13,7 @@ Open the local Vite URL shown in the terminal. Paste Nadeko's board into **Guess
 
 Everything runs in the browser. There is no Discord login, bot token, backend, or message upload.
 
-The word corpus comes from the five YAML files in `public/data/`: `movies.yml`, `countries.yml`, `anime.yml`, `things.yml`, and `animals.yml`. Each file contains Nadeko entries with a `word` and optional `imageUrl`. The app loads them locally at runtime, normalizes punctuation while preserving word boundaries, and uses only the selected category.
+The word corpus comes from the five YAML files in `public/data/`: `movies.yml`, `countries.yml`, `anime.yml`, `things.yml`, and `animals.yml`. Each file contains Nadeko entries with a `word` and optional `imageUrl`. The app loads them locally at runtime, normalizes punctuation while preserving word boundaries, and searches the combined corpus by default. You can switch to any individual category when needed.
 
 ## Build
 
