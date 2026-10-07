@@ -80,7 +80,21 @@ function App() {
   else if (!loaded) verdict = <p className="note">Loading the word lists…</p>
   else if (!board.length) verdict = <p className="note">Paste the board from Nadeko’s hangman message to get your next letter.</p>
   else if (!candidates.length) verdict = <p className="note">No answer fits this board. Check the missed letters, or search another category.</p>
-  else if (!top) verdict = <p className="note">Every letter is already on the board. The answer is {displayWords.get(candidates[0].word) ?? candidates[0].word}.</p>
+  else if (candidates.length === 1) {
+    const solved = displayWords.get(candidates[0].word) ?? candidates[0].word
+    verdict = (
+      <div className="solved">
+        <button key={solved} type="button" className={`solved-word ${solved.length > 14 ? 'is-long' : ''}`} onClick={() => copy(solved)} aria-label={`Copy ${solved}`}>{solved}</button>
+        <p className="answer-why">It’s the only answer in the word list that fits this board.</p>
+        <button type="button" className="copy" onClick={() => copy(solved)}>{copied === solved ? 'Copied' : 'Copy answer'}</button>
+        {top && (
+          <p className="solved-alt">
+            Or guess <button type="button" className="inline-letter" onClick={() => copy(top)} aria-label={`Copy ${top.toUpperCase()}`}>{copied === top ? '✓' : top.toUpperCase()}</button> to keep going letter by letter.
+          </p>
+        )}
+      </div>
+    )
+  }
 
   return (
     <main className="page">
