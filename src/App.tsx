@@ -14,14 +14,6 @@ const categoryLabels = {
 type Category = WordCategory
 const allCategories = Object.keys(categoryLabels) as Category[]
 
-const examples = [
-  { label: 'Screenshot', pattern: '______', wrong: 'o' },
-  { label: '6 letters', pattern: '_ _ _ _ _ _', wrong: '' },
-  { label: 'Pattern', pattern: 'c _ _ _ _ _', wrong: 'ae' },
-  { label: 'Lucky guess', pattern: '_ a _ _ e _', wrong: 's t' },
-  { label: 'Nadeko phrase', pattern: '_ a _ _ i _ _   _ e a _ _ _ _', wrong: '' },
-  { label: 'Country phrase', pattern: '_ a _   T _ m _   a n d   _ r _ n _ _ _ _', wrong: '', category: 'countries' as const },
-]
 
 function App() {
   const [pattern, setPattern] = useState('')
@@ -52,12 +44,6 @@ function App() {
   )
   const frequencies = useMemo(() => letterFrequency(candidates), [candidates])
   const topSuggestion = frequencies[0]?.letter ?? candidates[0]?.nextLetters[0] ?? ''
-
-  function applyExample(example: typeof examples[number]) {
-    setPattern(example.pattern)
-    setWrong(example.wrong)
-    if (example.category) setSelectedCategory(example.category)
-  }
 
   async function copySuggestion(value: string) {
     if (!value) return
@@ -100,8 +86,6 @@ function App() {
           <p className="field-help">Paste the underscore line from the Guess panel. Revealed letters stay in the board; wider gaps separate words.</p>
 
           <div><label className="field-label" htmlFor="wrong">Missed letters</label><input id="wrong" className="text-input" value={wrong} onChange={(event) => setWrong(event.target.value)} /></div>
-
-          <div className="examples"><span>Try an example</span>{examples.map((example) => <button key={example.label} onClick={() => applyExample(example)}>{example.label}</button>)}</div>
         </div>
 
         <div className="result-panel panel">
