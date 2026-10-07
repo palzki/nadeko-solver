@@ -6,6 +6,11 @@ export type Candidate = {
 
 const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('')
 
+// Hangman reveals every copy of a guessed letter, so a blank can never hide a letter already on the board.
+function fitsPattern(word: string, wordPattern: string, knownLetters: Set<string>): boolean {
+  return [...wordPattern].every((letter, index) => letter === '_' ? !knownLetters.has(word[index]) : word[index] === letter)
+}
+
 export function cleanPattern(value: string): string {
   return value.toLowerCase().replace(/[^a-z_?\s]/g, '').replace(/\?/g, '_').trim()
 }
@@ -25,7 +30,7 @@ export function solve(pattern: string, wrong: string, words: readonly string[], 
     .filter((word) => word.includes(' '))
     .filter((word) => {
       const wordParts = word.split(' ')
-      return wordParts.length === patterns.length && wordParts.every((wordPart, index) => wordPart.length === patterns[index].length && [...patterns[index]].every((letter, letterIndex) => letter === '_' || wordPart[letterIndex] === letter))
+      return wordParts.length === patterns.length && wordParts.every((wordPart, index) => wordPart.length === patterns[index].length && fitsPattern(wordPart, patterns[index], knownLetters))
     })
     .filter((word) => ![...wrongLetters].some((letter) => word.includes(letter)))
     .map((word) => {
@@ -37,7 +42,7 @@ export function solve(pattern: string, wrong: string, words: readonly string[], 
     .filter((word) => !word.includes(' '))
     .filter((word) => word.length === wordPattern.length)
     .filter((word) => ![...wrongLetters].some((letter) => word.includes(letter)))
-    .filter((word) => [...wordPattern].every((letter, index) => letter === '_' || word[index] === letter))
+    .filter((word) => fitsPattern(word, wordPattern, knownLetters))
     .map((word) => {
       const nextLetters = alphabet.filter((letter) => word.includes(letter) && !knownLetters.has(letter) && !wrongLetters.has(letter))
       const score = nextLetters.reduce((total, letter) => total + word.split(letter).length - 1, 0)
