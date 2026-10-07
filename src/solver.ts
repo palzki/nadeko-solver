@@ -15,6 +15,15 @@ export function cleanPattern(value: string): string {
   return value.toLowerCase().replace(/[^a-z_?\s]/g, '').replace(/\?/g, '_').trim()
 }
 
+// Splits a board into one pattern per word. Boards are either "_a__e_ ___" or Nadeko's "_ a _ _ e _   _ _ _".
+export function boardWords(pattern: string): string[] {
+  const normalizedPattern = cleanPattern(pattern)
+  const tokens = normalizedPattern.split(/\s+/).filter(Boolean)
+  return tokens.some((token) => token.length > 1)
+    ? tokens
+    : normalizedPattern.split(/\s{2,}/).map((wordPattern) => wordPattern.replace(/\s+/g, '')).filter(Boolean)
+}
+
 export function solve(pattern: string, wrong: string, words: readonly string[], allowCombinations = true): Candidate[] {
   const normalizedPattern = cleanPattern(pattern)
   const knownLetters = new Set(normalizedPattern.match(/[a-z]/g) ?? [])
@@ -22,10 +31,7 @@ export function solve(pattern: string, wrong: string, words: readonly string[], 
 
   if (!normalizedPattern.length) return []
 
-  const tokens = normalizedPattern.split(/\s+/).filter(Boolean)
-  const patterns = tokens.some((token) => token.length > 1)
-    ? tokens.map((token) => token.replace(/\s+/g, ''))
-    : normalizedPattern.split(/\s{2,}/).map((wordPattern) => wordPattern.replace(/\s+/g, '')).filter(Boolean)
+  const patterns = boardWords(normalizedPattern)
   const phraseCandidates = words
     .filter((word) => word.includes(' '))
     .filter((word) => {

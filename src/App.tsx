@@ -1,107 +1,185 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Check, Clipboard, RotateCcw, Search, X } from 'lucide-react'
-import { letterFrequency, solve } from './solver'
+import { type ReactNode, useEffect, useMemo, useState } from 'react'
+import { boardWords, letterFrequency, solve } from './solver'
 import { loadWordCategories, type WordCategory, type WordEntry } from './wordLoader'
 
-const categoryLabels = {
-  general: 'general',
-  movies: 'movies',
-  countries: 'countries',
-  anime: 'anime',
-  things: 'things',
-  animals: 'animals',
-} as const
-type Category = WordCategory
-const allCategories = Object.keys(categoryLabels) as Category[]
+const categories: WordCategory[] = ['general', 'movies', 'countries', 'anime', 'things', 'animals']
+const categoryNames: Record<WordCategory, string> = {
+  general: 'Everything',
+  movies: 'Movies',
+  countries: 'Countries',
+  anime: 'Anime',
+  things: 'Things',
+  animals: 'Animals',
+}
+const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('')
+const shownLimit = 60
+const emptyCategories: Record<WordCategory, WordEntry[]> = { general: [], movies: [], countries: [], anime: [], things: [], animals: [] }
 
+async function copyText(value: string) {
+  try {
+    await navigator.clipboard.writeText(value)
+  } catch {
+    const fallback = document.createElement('textarea')
+    fallback.value = value
+    fallback.style.position = 'fixed'
+    fallback.style.opacity = '0'
+    document.body.appendChild(fallback)
+    fallback.select()
+    document.execCommand('copy')
+    fallback.remove()
+  }
+}
 
 function App() {
   const [pattern, setPattern] = useState('')
   const [wrong, setWrong] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<Category>('general')
+  const [category, setCategory] = useState<WordCategory>('general')
   const [copied, setCopied] = useState('')
-  const [wordCategories, setWordCategories] = useState<Record<Category, WordEntry[]>>({ general: [], movies: [], countries: [], anime: [], things: [], animals: [] })
+  const [wordCategories, setWordCategories] = useState(emptyCategories)
   const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
     loadWordCategories().then(setWordCategories).catch((error: unknown) => {
-      setLoadError(error instanceof Error ? error.message : 'Unable to load word lists')
+      setLoadError(error instanceof Error ? error.message : 'The word lists could not be loaded.')
     })
   }, [])
 
-  const activeWords = useMemo(
-    () => wordCategories[selectedCategory].map((entry) => entry.word),
-    [selectedCategory, wordCategories],
-  )
-  const displayWords = useMemo(
-    () => new Map(wordCategories[selectedCategory].map((entry) => [entry.word, entry.displayWord])),
-    [selectedCategory, wordCategories],
-  )
+  const entries = wordCategories[category]
+  const loaded = wordCategories.general.length > 0
+  const activeWords = useMemo(() => entries.map((entry) => entry.word), [entries])
+  const displayWords = useMemo(() => new Map(entries.map((entry) => [entry.word, entry.displayWord])), [entries])
 
-  const candidates = useMemo(
-    () => solve(pattern, wrong, activeWords, false),
-    [pattern, wrong, activeWords, selectedCategory],
-  )
-  const frequencies = useMemo(() => letterFrequency(candidates), [candidates])
-  const topSuggestion = frequencies[0]?.letter ?? candidates[0]?.nextLetters[0] ?? ''
+  const candidates = useMemo(() => solve(pattern, wrong, activeWords, false), [pattern, wrong, activeWords])
+  const top = letterFrequency(candidates)[0]?.letter ?? candidates[0]?.nextLetters[0] ?? ''
+  const board = useMemo(() => boardWords(pattern), [pattern])
+  const revealed = new Set(pattern.toLowerCase().match(/[a-z]/g) ?? [])
+  const missed = new Set(wrong.toLowerCase().match(/[a-z]/g) ?? [])
+  const counts = useMemo(() => {
+    const map = new Map<string, number>()
+    candidates.forEach(({ nextLetters }) => nextLetters.forEach((letter) => map.set(letter, (map.get(letter) ?? 0) + 1)))
+    return map
+  }, [candidates])
+  const topCount = counts.get(top) ?? 0
 
-  async function copySuggestion(value: string) {
+  async function copy(value: string) {
     if (!value) return
-    try {
-      await navigator.clipboard?.writeText(value)
-    } catch {
-      const fallback = document.createElement('textarea')
-      fallback.value = value
-      fallback.style.position = 'fixed'
-      fallback.style.opacity = '0'
-      document.body.appendChild(fallback)
-      fallback.select()
-      document.execCommand('copy')
-      fallback.remove()
-    }
+    await copyText(value)
     setCopied(value)
-    window.setTimeout(() => setCopied(''), 1400)
+    window.setTimeout(() => setCopied((current) => (current === value ? '' : current)), 1400)
   }
 
-  function reset() {
+  function clear() {
     setPattern('')
     setWrong('')
-    setSelectedCategory('general')
     setCopied('')
+    document.getElementById('pattern')?.focus()
   }
 
+  let verdict: ReactNode
+  if (loadError) verdict = <p className="note">{loadError} Reload the page to try again.</p>
+  else if (!loaded) verdict = <p className="note">Loading the word lists…</p>
+  else if (!board.length) verdict = <p className="note">Paste the board from Nadeko’s hangman message to get your next letter.</p>
+  else if (!candidates.length) verdict = <p className="note">No answer fits this board. Check the missed letters, or search another category.</p>
+  else if (!top) verdict = <p className="note">Every letter is already on the board. The answer is {displayWords.get(candidates[0].word) ?? candidates[0].word}.</p>
+
   return (
-    <main className="app-shell">
-      <nav className="topbar" aria-label="Primary navigation">
-        <div className="brand"><span className="brand-mark">H</span><span>hangman<span className="brand-dot">.</span>solve</span></div>
-        <span className="nav-note"><span className="status-dot" /> local solver</span>
-      </nav>
-
-      <section className="workspace" aria-label="Hangman solver">
-        <div className="input-panel panel">
-          <div className="panel-heading"><div><span className="step-label">01 / board state</span><h2>What does Nadeko show?</h2></div><button className="icon-button" onClick={reset} title="Reset solver" aria-label="Reset solver"><RotateCcw size={17} /></button></div>
-          <div className="category-toggle-group"><span className="field-label category-label">Search in</span><div className="category-toggles" role="radiogroup" aria-label="Word category">{allCategories.map((category) => <button key={category} className={`category-toggle ${selectedCategory === category ? 'is-selected' : ''}`} role="radio" aria-checked={selectedCategory === category} onClick={() => setSelectedCategory(category)}>{categoryLabels[category]}</button>)}</div></div>
-          <label className="field-label" htmlFor="pattern">Guess from Nadeko</label>
-          <div className="pattern-wrap"><Search size={18} /><input id="pattern" value={pattern} onChange={(event) => setPattern(event.target.value)} autoComplete="off" /><span className="pattern-hint">spaces okay</span></div>
-          <p className="field-help">Paste the underscore line from the Guess panel. Revealed letters stay in the board; wider gaps separate words.</p>
-
-          <div><label className="field-label" htmlFor="wrong">Missed letters</label><input id="wrong" className="text-input" value={wrong} onChange={(event) => setWrong(event.target.value)} /></div>
+    <main className="page">
+      <header className="masthead">
+        <h1>Hangman helper</h1>
+        <div className="categories" role="radiogroup" aria-label="Search in">
+          {categories.map((item) => (
+            <button key={item} type="button" role="radio" aria-checked={category === item} className="category" onClick={() => setCategory(item)}>
+              {categoryNames[item]}
+            </button>
+          ))}
         </div>
+      </header>
 
-        <div className="result-panel panel">
-          <div className="result-header"><div><span className="step-label">02 / recommendation</span><h2>Your next move</h2></div><div className="match-count">{candidates.length} <span>matches</span></div></div>
-          <div className="suggestion-box">
-            <div className="suggestion-kicker">highest frequency</div>
-            <div className="suggestion-letter">{topSuggestion || '—'}</div>
-            <p>{topSuggestion ? `Try “${topSuggestion.toUpperCase()}” next. It appears in the most remaining words.` : 'Enter a pattern to reveal your strongest next guess.'}</p>
-            <button className="copy-button" onClick={() => copySuggestion(topSuggestion)} disabled={!topSuggestion}>{topSuggestion && copied === topSuggestion ? <><Check size={16} /> copied</> : <><Clipboard size={16} /> copy letter</>}</button>
-          </div>
-          <div className="frequency-list"><div className="mini-heading">Most useful letters</div>{frequencies.length ? frequencies.map(({ letter, count }, index) => <button className={`frequency-row ${index === 0 ? 'is-top' : ''}`} key={letter} onClick={() => copySuggestion(letter)}><span className="frequency-rank">0{index + 1}</span><strong>{letter}</strong><span className="frequency-track"><i style={{ width: `${(count / frequencies[0].count) * 100}%` }} /></span><span className="frequency-count">{count}</span></button>) : <p className="empty-state">No candidates yet. Check the word length and wrong letters.</p>}</div>
+      <section className="inputs" aria-label="Board">
+        <div className="field field-board">
+          <label htmlFor="pattern">Board</label>
+          <input id="pattern" value={pattern} onChange={(event) => setPattern(event.target.value)} placeholder="Paste it here" autoComplete="off" spellCheck={false} autoFocus />
         </div>
+        <div className="field field-missed">
+          <label htmlFor="wrong">Missed letters</label>
+          <input id="wrong" value={wrong} onChange={(event) => setWrong(event.target.value)} placeholder="None yet" autoComplete="off" spellCheck={false} />
+        </div>
+        <button type="button" className="clear" onClick={clear} disabled={!pattern && !wrong}>Clear</button>
       </section>
 
-      <section className="candidates-section"><div className="section-heading"><div><span className="step-label">03 / shortlist</span><h2>Words still in play</h2></div><span className="corpus-note">showing {Math.min(candidates.length, 48)} of {candidates.length} matches</span></div><div className="candidate-grid">{loadError ? <div className="empty-candidates"><X size={17} /> {loadError}</div> : candidates.slice(0, 48).map((candidate, index) => { const displayWord = displayWords.get(candidate.word) ?? candidate.word; return <button className="candidate-card" key={candidate.word} onClick={() => copySuggestion(displayWord)} title={`Copy ${displayWord}`}><span className="candidate-index">{copied === displayWord ? 'copied' : String(index + 1).padStart(2, '0')}</span><strong>{displayWord}</strong><span>{candidate.nextLetters.length ? `${candidate.nextLetters.slice(0, 4).join(' · ')} likely next` : 'all letters known'}</span></button> })}{!loadError && !candidates.length && <div className="empty-candidates"><X size={17} /> {activeWords.length ? 'No words match this board state.' : 'Loading word list...'}</div>}</div></section>
-      <footer>Built for quick guesses in the middle of a Discord round <span>·</span> no messages leave your browser</footer>
+      <section className="stage">
+        <div className="answer" aria-live="polite">
+          {verdict ?? (
+            <>
+              <button key={top} type="button" className="big-letter" onClick={() => copy(top)} aria-label={`Copy ${top.toUpperCase()}`}>
+                {top.toUpperCase()}
+              </button>
+              <div className="answer-text">
+                <p className="answer-line">Guess <strong>{top.toUpperCase()}</strong> next</p>
+                <p className="answer-why">It’s in {topCount} of {candidates.length} possible {candidates.length === 1 ? 'answer' : 'answers'}.</p>
+                <button type="button" className="copy" onClick={() => copy(top)}>{copied === top ? 'Copied' : `Copy ${top.toUpperCase()}`}</button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {board.length > 0 && (
+          <div className="board" aria-label="Board as read">
+            {board.map((word, wordIndex) => (
+              <span className="board-word" key={wordIndex}>
+                {[...word].map((letter, index) => (
+                  <span key={index} className={`tile ${letter === '_' ? 'is-blank' : ''}`}>{letter === '_' ? '' : letter.toUpperCase()}</span>
+                ))}
+              </span>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {board.length > 0 && (
+      <section className="letters" aria-label="Letters">
+        <ol className="alphabet">
+          {alphabet.map((letter) => {
+            const count = counts.get(letter) ?? 0
+            const state = revealed.has(letter) ? 'on-board' : missed.has(letter) ? 'missed' : letter === top ? 'top' : count ? 'possible' : 'unlikely'
+            const describe = state === 'on-board' ? 'on the board' : state === 'missed' ? 'missed' : `in ${count} possible ${count === 1 ? 'answer' : 'answers'}`
+            return (
+              <li key={letter}>
+                <button type="button" className={`key is-${state}`} onClick={() => copy(letter)} title={`${letter.toUpperCase()}: ${describe}. Click to copy.`} aria-label={`${letter.toUpperCase()}, ${describe}`}>
+                  <span className="key-letter">{copied === letter ? '✓' : letter.toUpperCase()}</span>
+                  <span className="key-bar" style={{ ['--fill' as string]: candidates.length && (state === 'top' || state === 'possible') ? count / candidates.length : 0 }} />
+                </button>
+              </li>
+            )
+          })}
+        </ol>
+        <p className="legend">The bar shows how many possible answers contain each letter. <span className="legend-missed">Pink</span> letters are missed. Click any letter to copy it.</p>
+      </section>
+      )}
+
+      {candidates.length > 0 && (
+        <section className="answers">
+          <h2>Possible answers <span className="answers-count">{candidates.length}</span></h2>
+          <ul className="answer-list">
+            {candidates.slice(0, shownLimit).map(({ word }) => {
+              const display = displayWords.get(word) ?? word
+              return (
+                <li key={word}>
+                  <button type="button" className="answer-word" onClick={() => copy(display)} title={`Copy ${display}`}>
+                    {[...display].map((character, index) => (
+                      <span key={index} className={top && character.toLowerCase() === top ? 'hit' : undefined}>{character}</span>
+                    ))}
+                    {copied === display && <span className="answer-copied">copied</span>}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          {candidates.length > shownLimit && <p className="note">And {candidates.length - shownLimit} more. Guess a few letters to narrow it down.</p>}
+        </section>
+      )}
+
+      <footer className="footer">Runs entirely in your browser. Nothing you type is sent anywhere.</footer>
     </main>
   )
 }
