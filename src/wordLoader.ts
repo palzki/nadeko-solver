@@ -16,8 +16,15 @@ const files: Record<Exclude<WordCategory, 'general'>, string> = {
   animals: 'animals.yml',
 }
 
+const maskedSymbols = new Set(['ψ'])
+
 function normalizeWord(value: string): string {
-  return value.toLowerCase().replace(/[^a-z]+/g, ' ').trim()
+  return [...value.toLowerCase()]
+    .map((character) => maskedSymbols.has(character) ? '_' : /[a-z0-9\s]/.test(character) ? character : '')
+    .join('')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+(\d+)$/, '$1')
+    .trim()
 }
 
 export async function loadWordCategories(): Promise<Record<WordCategory, WordEntry[]>> {

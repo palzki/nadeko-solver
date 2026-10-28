@@ -16,11 +16,12 @@ const shownLimit = 60
 const emptyCategories: Record<WordCategory, WordEntry[]> = { general: [], movies: [], countries: [], anime: [], things: [], animals: [] }
 
 async function copyText(value: string) {
+  const text = value.toLowerCase()
   try {
-    await navigator.clipboard.writeText(value)
+    await navigator.clipboard.writeText(text)
   } catch {
     const fallback = document.createElement('textarea')
-    fallback.value = value
+    fallback.value = text
     fallback.style.position = 'fixed'
     fallback.style.opacity = '0'
     document.body.appendChild(fallback)

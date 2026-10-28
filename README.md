@@ -11,9 +11,11 @@ npm run dev
 
 Open the local Vite URL shown in the terminal. Paste Nadeko's board into **Guess from Nadeko** and enter missed letters in any format, such as `oqx`, `o q x`, or `o, q, x`. Revealed letters are already part of the board pattern, so no separate revealed/tried field is needed. The solver filters its bundled word list and ranks the most useful next letters by frequency.
 
+Copied answers are lowercase; displayed titles keep their original capitalization.
+
 Everything runs in the browser. There is no Discord login, bot token, backend, or message upload.
 
-The word corpus comes from the five YAML files in `public/data/`: `movies.yml`, `countries.yml`, `anime.yml`, `things.yml`, and `animals.yml`. Each file contains Nadeko entries with a `word` and optional `imageUrl`. The app loads them locally at runtime, normalizes punctuation while preserving word boundaries, and searches the combined corpus by default. You can switch to any individual category when needed.
+The word corpus comes from the five YAML files in `public/data/`: `movies.yml`, `countries.yml`, `anime.yml`, `things.yml`, and `animals.yml`. Each file contains Nadeko entries with a `word` and optional `imageUrl`. The app loads them locally at runtime, normalizes punctuation while preserving word boundaries and digits, and treats `Ψ` as a masked letter. It searches the combined corpus by default; you can switch to any individual category when needed.
 
 ## Build
 

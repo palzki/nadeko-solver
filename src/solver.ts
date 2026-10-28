@@ -12,16 +12,28 @@ function fitsPattern(word: string, wordPattern: string, knownLetters: Set<string
 }
 
 export function cleanPattern(value: string): string {
-  return value.toLowerCase().replace(/[^a-z_?\s]/g, '').replace(/\?/g, '_').trim()
+  return value.toLowerCase()
+    .replace(/(\s*)[^a-z0-9_?\s](\s*)/g, (_match: string, before: string, after: string) => {
+      if (before.length > 1 || after.length > 1) return '  '
+      return before || after ? ' ' : ''
+    })
+    .replace(/\?/g, '_')
+    .trim()
 }
 
 // Splits a board into one pattern per word. Boards are either "_a__e_ ___" or Nadeko's "_ a _ _ e _   _ _ _".
 export function boardWords(pattern: string): string[] {
   const normalizedPattern = cleanPattern(pattern)
   const tokens = normalizedPattern.split(/\s+/).filter(Boolean)
-  return tokens.some((token) => token.length > 1)
+  const wordPatterns = tokens.some((token) => token.length > 1)
     ? tokens
     : normalizedPattern.split(/\s{2,}/).map((wordPattern) => wordPattern.replace(/\s+/g, '')).filter(Boolean)
+
+  return wordPatterns.reduce<string[]>((words, wordPattern) => {
+    if (/^\d+$/.test(wordPattern) && words.length) words[words.length - 1] += wordPattern
+    else words.push(wordPattern)
+    return words
+  }, [])
 }
 
 export function solve(pattern: string, wrong: string, words: readonly string[], allowCombinations = true): Candidate[] {
